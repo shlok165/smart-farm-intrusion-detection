@@ -1,0 +1,19 @@
+[Unit]
+Description=Smart Farm GPIO Control Server
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/home/group2/smartfarm
+Environment=PATH=/home/group2/smartfarm/gpio_env/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/home/group2/smartfarm/gpio_env/bin/python /home/group2/smartfarm/gpio_control_server.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
