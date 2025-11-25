@@ -7,6 +7,7 @@ import requests
 import socket
 import threading
 import os
+import random
 os.environ['DISPLAY'] = ':0'
 
 class SmartAnimalDetector:
@@ -138,23 +139,95 @@ class SmartAnimalDetector:
                                 print(f"[{timestamp}] 🐾 {class_name} (conf: {conf:.2f}) detected.")
                                 timestamp_iso = datetime.now(timezone.utc).isoformat(timespec='milliseconds').replace('+00:00', 'Z')
                                 print(f"Sending timestamp: {timestamp_iso}")
-                                response = requests.post(
-                                    "https://smart-farm-intrusion-detection-server.onrender.com/api/log/create/6909cdfab50cff3e260f9fef",
-                                    headers={"Content-Type": "application/json"},
-                                    json={
-                                            "location": {
-                                                "latitude": 40.7128,
-                                                "longitude": -74.006,
-                                                "zone": "North Pasture"
-                                            },
-                                            "detectionType": "camera",
-                                            "timestamp": timestamp_iso,
-                                            "severity": "high",
-                                            "animalType": class_name,
-                                            "confidence": 85.5,
-                                            "resolved": False
-                                            },
-                                    timeout=2)
+                                # base severity by animal type
+                                severity_order = ['low', 'medium', 'high', 'critical']
+                                base_map = {
+                                    'bird': 'low',
+                                    'rat': 'low',
+                                    'cat': 'medium',
+                                    'dog': 'medium',
+                                    'sheep': 'medium',
+                                    'horse': 'high',
+                                    'cow': 'high',
+                                    'bear': 'high',
+                                    'zebra': 'high',
+                                    'giraffe': 'high',
+                                    'elephant': 'critical'
+                                }
+
+                                # Confidence ranges per animal type: dangerous/large animals -> higher reported confidence,
+                                # small/ambiguous animals -> lower reported confidence.
+                                conf_ranges = {
+                                    'elephant': (0.8, 1.0),
+                                    'bear': (0.8, 1.0),
+                                    'horse': (0.7, 0.95),
+                                    'cow': (0.7, 0.95),
+                                    'zebra': (0.7, 0.95),
+                                    'giraffe': (0.7, 0.95),
+                                    'dog': (0.6, 0.9),
+                                    'cat': (0.6, 0.9),
+                                    'sheep': (0.6, 0.9),
+                                    'bird': (0.4, 0.75),
+                                    'rat': (0.4, 0.7)
+                                }
+
+                                # Adjust the model confidence based on animal type.
+                                # Map model's 0..1 confidence into a type-specific range, add small jitter, and clamp.
+                                try:
+                                    model_conf = float(conf)
+                                except Exception:
+                                    model_conf = 0.5
+                                low, high = conf_ranges.get(class_name.lower(), (0.5, 0.9))
+                                conf = low + (high - low) * model_conf + random.uniform(-0.02, 0.02)
+                                conf = max(0.0, min(1.0, conf))
+
+                                base = base_map.get(class_name.lower(), 'medium')
+                                base_idx = severity_order.index(base)
+
+                                # small randomness: usually keep base, sometimes nudge up/down, rarely jump two levels
+                                r = random.random()
+                                if r < 0.05:
+                                    offset = 2
+                                elif r < 0.20:
+                                    offset = 1
+                                elif r < 0.25:
+                                    offset = -1
+                                else:
+                                    offset = 0
+
+                                severity_idx = max(0, min(len(severity_order)-1, base_idx + offset))
+                                severity = severity_order[severity_idx]
+
+                                # use detected confidence (0..1) -> percentage
+                                confidence_val = round(float(conf) * 100, 1)
+
+                                payload = {
+                                    "location": {
+                                        "latitude": 40.7128,
+                                        "longitude": -74.006,
+                                        "zone": "North Pasture"
+                                    },
+                                    "detectionType": "camera",
+                                    "timestamp": timestamp_iso,
+                                    "severity": severity,
+                                    "animalType": class_name,
+                                    "confidence": confidence_val,
+                                    "resolved": False
+                                }
+
+                                try:
+                                    response = requests.post(
+                                        "https://smart-farm-intrusion-detection-server.onrender.com/api/log/create/6909cdfab50cff3e260f9fef",
+                                        headers={"Content-Type": "application/json"},
+                                        json=payload,
+                                        timeout=2
+                                    )
+                                except Exception as e:
+                                    print(f"Error sending log: {e}")
+                                    response = None
+
+                                print(f"Chosen severity: {severity} (base: {base}, offset: {offset})")
+                                print(f"Log sent. Server response: {getattr(response, 'status_code', 'N/A')}")
                                 print(f"Log sent. Server response: {response.status_code}")
                                 animal_detected = True
 
