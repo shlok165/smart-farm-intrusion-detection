@@ -143,7 +143,7 @@ This starts the ultrasonic sensor monitoring and detection system.
 **3. Access the web dashboard:**
 Open your browser and navigate to:
 ```
-[Dashboard](https://tinkering2k25.web.app/)
+https://tinkering2k25.web.app/
 ```
 
 That's it! The system is now running and monitoring for intrusions.
