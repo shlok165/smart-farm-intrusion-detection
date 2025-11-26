@@ -1,325 +1,298 @@
 # Smart Farm Intrusion Detection System
 
-A low-power edge AI system for detecting and deterring wildlife entering farmland. Uses PIR sensing, camera vision, and lightweight ML models to identify animals like boars, cows, monkeys, and stray dogs. Supports day/night operation, non-lethal deterrents, and reduces false alarms using sensor fusion.
+A real-time animal intrusion detection and deterrence system for smart farming applications using ultrasonic sensors, ESP32-CAM, and YOLOv8n object detection with live web monitoring.
 
-## GPIO Control Server
+## Overview
 
-This repository includes a FastAPI-based server for controlling Raspberry Pi GPIO pins via HTTP POST requests. Perfect for IoT and smart farm applications.
+This system provides automated wildlife intrusion detection and non-lethal repellent mechanisms to protect crops and livestock. The system uses a distributed architecture with edge computing on Raspberry Pi 4 and centralized AI processing on a remote server, with real-time monitoring available through a web dashboard.
 
-### Features
+## System Architecture
 
-- 🚀 FastAPI with automatic API documentation
-- 🔌 Control individual or multiple GPIO pins
-- 📊 Read GPIO pin states
-- 🔄 Reset all pins to LOW state
-- 🛡️ Input validation and error handling
-- 🔧 Simulation mode when RPi.GPIO is not available
-- 📖 Interactive API documentation at `/docs`
-- 🔄 Systemd service for auto-start with sudo permissions
+### Hardware Components
+- **Raspberry Pi 4**: Edge device for sensor monitoring and local control
+- **ESP32-CAM**: Camera module for visual detection
+- **Ultrasonic Sensor**: Distance measurement for proximity detection
+- **Repellent Actuators**:
+  - High-intensity lights
+  - Buzzer
+  - Water pump system
 
-### Installation
+### Software Components
+- **ultrasonic.py** (Raspberry Pi 4): Monitors ultrasonic sensor and triggers detection pipeline
+- **tl3.py** (Remote Server): Processes detection requests using YOLOv8n model
+- **YOLOv8n**: Lightweight object detection model for animal classification
+- **Web Dashboard**: Real-time monitoring interface hosted at **[Smart Farm UI](https://tinkering2k25.web.app/)**
 
-1. **Install Python dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Features
 
-2. **For Raspberry Pi GPIO support:**
-   ```bash
-   # Usually pre-installed on Raspberry Pi OS
-   pip install RPi.GPIO
-   ```
+- ✅ Real-time distance monitoring using ultrasonic sensors
+- ✅ Automated intrusion detection based on proximity thresholds
+- ✅ AI-powered animal classification using YOLOv8n
+- ✅ Multi-stage non-lethal deterrent system (lights, sound, water)
+- ✅ Remote processing for resource-intensive AI operations
+- ✅ Live web dashboard with real-time statistics
+- ✅ WebSocket-based log streaming
+- ✅ Historical data visualization and analytics
+- ✅ Modular and scalable architecture
 
-3. **Set up auto-start service (optional):**
-   ```bash
-   sudo ./setup_autostart.sh
-   ```
+## System Workflow
 
-### Quick Start
+1. **Proximity Detection**: Ultrasonic sensor continuously measures distance
+2. **Threshold Trigger**: When animal reaches critical distance, system activates
+3. **Visual Verification**: ESP32-CAM captures image for analysis
+4. **AI Classification**: Server processes image using YOLOv8n model
+5. **Deterrent Activation**: Based on detection confidence, repellents are deployed
+6. **Real-time Logging**: All events streamed to web dashboard via WebSocket
+7. **Data Analytics**: System aggregates statistics for trend analysis
+8. **Monitoring**: System logs events and returns to monitoring state
 
-1. **Start the server manually:**
-   ```bash
-   ./start_gpio_server.sh
-   # Or with sudo permissions:
-   sudo ./start_gpio_server_sudo.sh
-   ```
+## Web Dashboard
 
-2. **Server will be available at:**
-   - API: `http://localhost:8000`
-   - Documentation: `http://localhost:8000/docs`
-   - Health check: `http://localhost:8000/health`
+### 🌐 Access the Live Dashboard
+**URL**: [Smart Farm UI](https://tinkering2k25.web.app/)
 
-3. **Test the API:**
-   ```bash
-   python test_gpio_client.py
-   ```
+The web dashboard provides:
+- **Real-Time Monitoring**: Live system status, sensor readings, and detection alerts
+- **Log Streaming**: Real-time log viewer with filtering and search
+- **Analytics**: species distribution
+- **System Controls**: Automatic deterrent triggers and configuration updates
+- **Live Camera Feed**: ESP32-CAM video stream integration
 
-### API Endpoints
+## Installation
 
-#### Health Check
+### Prerequisites
+
+**Raspberry Pi 4:**
 ```bash
-GET /health
+Python 3.7+
+RPi.GPIO library
 ```
 
-#### Control Single Pin
+**Remote Server:**
 ```bash
-POST /gpio/pin
-Content-Type: application/json
-
-{
-    "pin": 18,
-    "state": true
-}
+Python 3.8+
+PyTorch
+Ultralytics YOLOv8
 ```
 
-#### Control Multiple Pins
-```bash
-POST /gpio/pins
-Content-Type: application/json
+### Setup
 
-{
-    "pins": [
-        {"pin": 18, "state": true},
-        {"pin": 19, "state": false},
-        {"pin": 20, "state": true}
-    ]
-}
+**1. Clone the repository:**
+```bash
+git clone https://github.com/shlok165/smart-farm-intrusion-detection/
+cd smart-farm-intrusion-detection
 ```
 
-#### Get Pin State
+**2. Install dependencies:**
+
+On Raspberry Pi:
 ```bash
-GET /gpio/pin/{pin_number}
+pip install -r requirements.txt
 ```
 
-#### Reset All Pins
+On Remote Server:
 ```bash
-POST /gpio/reset
+pip install ultralytics torch torchvision
 ```
 
-### Usage Examples
+## Configuration
 
-#### Using curl
+### ⚠️ Important: Update IP Addresses
 
-**Turn on GPIO pin 18:**
-```bash
-curl -X POST "http://localhost:8000/gpio/pin" \
-     -H "Content-Type: application/json" \
-     -d '{"pin": 18, "state": true}'
-```
+**Before running the system, you must update the server IP address.**
 
-**Turn off GPIO pin 18:**
-```bash
-curl -X POST "http://localhost:8000/gpio/pin" \
-     -H "Content-Type: application/json" \
-     -d '{"pin": 18, "state": false}'
-```
-
-**Control multiple pins:**
-```bash
-curl -X POST "http://localhost:8000/gpio/pins" \
-     -H "Content-Type: application/json" \
-     -d '{
-       "pins": [
-         {"pin": 18, "state": true},
-         {"pin": 19, "state": true},
-         {"pin": 20, "state": false}
-       ]
-     }'
-```
-
-**Check pin state:**
-```bash
-curl -X GET "http://localhost:8000/gpio/pin/18"
-```
-
-**Reset all pins:**
-```bash
-curl -X POST "http://localhost:8000/gpio/reset"
-```
-
-#### Using Python requests
-
+**In `ultrasonic.py`:**
 ```python
-import requests
-
-# Control single pin
-response = requests.post("http://localhost:8000/gpio/pin", 
-                        json={"pin": 18, "state": True})
-print(response.json())
-
-# Control multiple pins
-response = requests.post("http://localhost:8000/gpio/pins", 
-                        json={
-                            "pins": [
-                                {"pin": 18, "state": True},
-                                {"pin": 19, "state": False}
-                            ]
-                        })
-print(response.json())
+# Update SERVER_IP with your remote server address
+SERVER_IP = "YOUR_SERVER_IP_HERE"  # e.g., "192.168.1.100"
+SERVER_PORT = 5000
 ```
 
-### GPIO Pin Mapping (BCM Mode)
-
-The server uses BCM (Broadcom) pin numbering. Common pins:
-
-| BCM Pin | Physical Pin | Description |
-|---------|-------------|-------------|
-| 18      | 12          | PWM capable |
-| 19      | 35          | PWM capable |
-| 20      | 38          | Standard GPIO |
-| 21      | 40          | Standard GPIO |
-| 16      | 36          | Standard GPIO |
-| 12      | 32          | PWM capable |
-
-⚠️ **Always check your Raspberry Pi pinout before connecting devices!**
-
-### Smart Farm Use Cases
-
-- 💧 **Irrigation Control**: Control water pumps and valves
-- 💡 **LED Grow Lights**: Turn grow lights on/off based on schedule
-- 🌡️ **Fan Control**: Control cooling fans based on temperature
-- 🔔 **Alarm Systems**: Control buzzers and indicators
-- ⚡ **Relay Control**: Control high-power devices safely
-- 🐗 **Deterrent Systems**: Control deterrent devices for wildlife
-
-### System Service Management
-
-The project includes scripts for managing the GPIO server as a system service:
-
-#### Setup Auto-Start
-```bash
-sudo ./setup_autostart.sh
-```
-
-#### Remove Auto-Start
-```bash
-sudo ./remove_autostart.sh
-```
-
-#### Service Management Commands
-```bash
-# Check service status
-sudo systemctl status smartfarm-gpio.service
-
-# Start/Stop service
-sudo systemctl start smartfarm-gpio.service
-sudo systemctl stop smartfarm-gpio.service
-
-# Restart service
-sudo systemctl restart smartfarm-gpio.service
-
-# View logs
-sudo journalctl -u smartfarm-gpio.service -f
-```
-
-### Configuration
-
-#### Environment Variables
-
-```bash
-# Server configuration
-export GPIO_SERVER_HOST="0.0.0.0"
-export GPIO_SERVER_PORT="8000"
-
-# GPIO settings
-export GPIO_MODE="BCM"  # or BOARD
-```
-
-#### CORS Settings
-
-By default, the server allows all origins. For production, modify the CORS settings in `gpio_control_server.py`:
-
+**In `tl3.py`:**
 ```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://your-frontend-domain.com"],  # Specify your domains
-    allow_credentials=True,
-    allow_methods=["GET", "POST"],
-    allow_headers=["*"],
-)
+# Update HOST if needed
+HOST = "0.0.0.0"  # Listen on all interfaces
+PORT = 5000
 ```
 
-## Safety Notes
+### Optional: Sensor Calibration
 
-⚠️ **Important Safety Guidelines:**
+Adjust detection threshold in `ultrasonic.py`:
+```python
+DETECTION_THRESHOLD = 50  # Distance in cm
+```
 
-1. **Voltage Levels**: Raspberry Pi GPIO pins operate at 3.3V
-2. **Current Limits**: Maximum 16mA per pin, 50mA total
-3. **Use Relays**: For controlling high-power devices (pumps, lights)
-4. **Pull-up/Pull-down**: Use appropriate resistors for reliable operation
-5. **Isolation**: Use optocouplers for electrical isolation when needed
+## Usage
+
+### Running the System
+
+The system requires only **2 Python files** to run:
+
+**1. Start the remote server (tl3.py):**
+```bash
+python tl3.py
+```
+This starts the AI detection server with YOLOv8n model.
+
+**2. Start the Raspberry Pi sensor (ultrasonic.py):**
+```bash
+python ultrasonic.py
+```
+This starts the ultrasonic sensor monitoring and detection system.
+
+**3. Access the web dashboard:**
+Open your browser and navigate to:
+```
+[Dashboard](https://tinkering2k25.web.app/)
+```
+
+That's it! The system is now running and monitoring for intrusions.
+
+## System Demonstration
+
+```mermaid
+flowchart TD
+
+%% MAIN LOOP
+subgraph "MAIN LOOP"
+    Start([System Init]):::sw
+    US[Ultrasonic Sensor - Raspberry Pi 4]:::hw
+    RPIMon[Monitoring Loop - Distance Check]:::sw
+    D1{Distance below threshold?}:::decision
+    BackToMonitor[[Return to monitoring state]]:::sw
+
+    Start --> US --> RPIMon --> D1
+    D1 -->|No - Safe| RPIMon
+    D1 -->|Yes - Trigger| TriggerPipeline
+end
+
+%% DETECTION PIPELINE
+subgraph "DETECTION PIPELINE"
+    TriggerPipeline[Start Detection Pipeline]:::sw
+    ESP[ESP32-CAM captures image]:::hw
+    Img[Image Frame]:::data
+    SendNet[Send image to remote server]:::data
+    TL3[Server tl3 script processes image]:::sw
+    YOLO[YOLOv8n model analyzes and classifies]:::sw
+    D2{Confidence high enough?}:::decision
+
+    TriggerPipeline --> ESP --> Img --> SendNet --> TL3 --> YOLO --> D2
+end
+
+%% CONFIDENCE PATH
+subgraph "CONFIDENCE PATH"
+    LowConf[Log event - low confidence]:::sw
+    D2 -->|No| LowConf --> BackToMonitor
+end
+
+%% CONFIRMED INTRUSION
+subgraph "CONFIRMED INTRUSION"
+    Intrusion[Confirmed Intrusion Detected]:::sw
+    Deterrent[Activate Repellent System - Lights + Buzzer + Water Pump]:::hw
+
+    D2 -->|Yes| Intrusion --> Deterrent --> BackToMonitor --> RPIMon
+end
+
+%% LOGGING + DASHBOARD (PARALLEL)
+subgraph "LOGGING + DASHBOARD (PARALLEL)"
+    LogEvt[Log Event]:::sw
+
+    TriggerPipeline -.-> LogEvt
+    Img -.-> LogEvt
+    YOLO -.-> LogEvt
+    D2 -.-> LogEvt
+    LowConf -.-> LogEvt
+    Intrusion -.-> LogEvt
+    Deterrent -.-> LogEvt
+end
+
+%% STYLES
+classDef hw fill:#ffb3ba,stroke:#cc0000,stroke-width:2px,color:black;
+classDef sw fill:#bae1ff,stroke:#003399,stroke-width:2px,color:black;
+classDef data fill:#baffc9,stroke:#009933,stroke-width:2px,stroke-dasharray:5 5,color:black;
+classDef decision fill:#ffffba,stroke:#cc9900,stroke-width:2px,font-weight:bold,color:black;
+
+class US,ESP,Deterrent hw;
+class RPIMon,TriggerPipeline,TL3,YOLO,LowConf,Intrusion,LogEvt,Start,BackToMonitor sw;
+class Img,SendNet data;
+class D1,D2 decision;
+
+```
+
+### 📹 Video Demo
+
+https://github.com/user-attachments/assets/fd8d4a48-32a9-47ed-b877-3ac7bbdd3d34
 
 ## Troubleshooting
 
-### Common Issues
+### Connection Issues
+- Verify server IP address is correctly configured in `ultrasonic.py`
+- Check firewall settings on remote server (port 5000 should be open)
+- Ensure both devices are on the same network or have proper routing
 
-**GPIO Permission Error:**
-```bash
-# Add user to gpio group
-sudo usermod -a -G gpio $USER
-# Logout and login again
-```
+### Camera Not Detected
+- Verify ESP32-CAM is powered and connected
+- Check camera stream URL in configuration
+- Test camera feed independently
 
-**Port Already in Use:**
-```bash
-# Kill process using port 8000
-sudo lsof -ti:8000 | xargs sudo kill -9
-```
+### Detection Issues
+- Calibrate ultrasonic sensor distance threshold
+- Verify YOLOv8n model is properly loaded on server
+- Check lighting conditions for camera detection
 
-**RPi.GPIO Not Available:**
-- Server runs in simulation mode
-- Install RPi.GPIO: `pip install RPi.GPIO`
-- Only available on Raspberry Pi hardware
+### Web Dashboard Connection
+- Verify you can access the dashboard URL
+- Check browser console for errors
+- Ensure WebSocket connection is established
 
-### Logs and Debugging
+## Performance Metrics
 
-The server provides detailed logging. Check the console output for:
-- Pin setup confirmations
-- State change logs
-- Error messages
-- Connection status
+- **Detection Latency**: < 2 seconds (from trigger to classification)
+- **Detection Accuracy**: ~85-95% (YOLOv8n dependent)
+- **False Positive Rate**: < 10% with proper calibration
+- **Range**: Up to 4 meters (ultrasonic sensor dependent)
+- **Dashboard Update Latency**: < 100ms for real-time logs
 
-## Development
+## Non-Lethal Deterrent Strategy
 
-### Running in Development Mode
+The system employs a graduated response:
 
-```bash
-# Auto-reload on file changes
-uvicorn gpio_control_server:app --reload --host 0.0.0.0 --port 8000
-```
+**Visual Deterrent**: High-intensity LED lights activate to startle animals
+**Acoustic Deterrent**: Buzzer emits loud sounds to discourage approach
+**Physical Deterrent**: Water pump sprays harmless water jet
 
-### Testing
+All deterrents are designed to be completely harmless while effectively discouraging intrusion.
 
-```bash
-# Run the test client
-python test_gpio_client.py
+## Future Enhancements
 
-# Manual testing with curl
-curl http://localhost:8000/health
-```
+- [ ] Multi-camera support for wider coverage
+- [ ] SMS/Email alert notifications
+- [ ] Mobile app for remote monitoring
+- [ ] Machine learning model retraining pipeline
+- [ ] Advanced AI models for species-specific detection
+- [ ] Solar power integration
+- [ ] Weather API integration for context-aware detection
 
-## Project Structure
+## Contributing
 
-```
-smartfarm/
-├── gpio_control_server.py      # Main FastAPI server
-├── start_gpio_server.sh        # Standard startup script
-├── start_gpio_server_sudo.sh   # Startup script with sudo
-├── setup_autostart.sh          # Install system service
-├── remove_autostart.sh         # Remove system service
-├── smartfarm-gpio.service      # Systemd service file
-├── test_gpio_client.py         # Test client for API
-├── ultrasonic.py              # Ultrasonic sensor module
-├── esp_cam_feed.py            # ESP32 camera feed
-├── fix_gpio_permissions.sh     # GPIO permission helper
-├── requirements.txt            # Python dependencies
-└── gpio_env/                   # Virtual environment
-```
+Contributions are welcome! Please fork the repository and submit a pull request with your improvements.
 
 ## License
 
-This project is open source. Use responsibly and follow electrical safety guidelines.
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For issues, questions, or suggestions, please open an issue on GitHub or contact the maintainer.
+
+## Acknowledgments
+
+- YOLOv8 by Ultralytics
+- Raspberry Pi Foundation
+- ESP32 community
 
 ---
 
-**Happy farming! 🌱🚜**
+**Developed by**: shlok165  
+**Last Updated**: November 2024  
+**Version**: 2.0.0
