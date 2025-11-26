@@ -291,8 +291,3 @@ For issues, questions, or suggestions, please open an issue on GitHub or contact
 - Raspberry Pi Foundation
 - ESP32 community
 
----
-
-**Developed by**: shlok165  
-**Last Updated**: November 2024  
-**Version**: 2.0.0
